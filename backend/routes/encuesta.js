@@ -1,32 +1,59 @@
-const express = require("express");
-const router = express.Router();
-const RespuestaEncuesta = require("../models/RespuestaEncuesta");
+const express = require('express');
+const jwt = require('jsonwebtoken');
+const Respuesta = require('../models/RespuestaEncuesta');
 
-// Ruta para enviar una nueva encuesta (por si acaso)
-router.post("/", async (req, res) => {
-  const { usuario, correo, seguridad, alumbrado, parques } = req.body;
-  if (!usuario || !correo) {
-    return res.status(400).json({ error: "Faltan datos" });
-  }
+const router = express.Router();
+
+// Middleware para verificar token
+const auth = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.sendStatus(401);
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    if (err) return res.sendStatus(403);
+    req.userId = decoded.id;
+    next();
+  });
+};
+
+// POST /api/encuesta/responder
+router.post('/responder', auth, async (req, res) => {
+  const { seguridad, alumbrado, parques, basura } = req.body;
 
   try {
-    const nueva = new RespuestaEncuesta({ usuario, correo, seguridad, alumbrado, parques });
+    const nueva = new Respuesta({
+      usuarioId: req.userId,
+      seguridad,
+      alumbrado,
+      parques,
+      basura
+    });
+
     await nueva.save();
-    res.status(201).json({ message: "Encuesta guardada correctamente" });
+    res.json({ mensaje: 'Encuesta guardada correctamente' });
   } catch (err) {
-    console.error("❌ Error al guardar encuesta:", err);
-    res.status(500).json({ error: "Error en el servidor" });
+    console.error(' Error al guardar encuesta:', err);
+    res.status(500).json({ mensaje: 'Error al guardar encuesta', error: err.message });
   }
 });
 
-// ✅ Ruta que estás usando en Resultados.jsx
-router.get("/resultados", async (req, res) => {
+// GET /api/encuesta/resultados
+router.get('/resultados', async (req, res) => {
   try {
-    const datos = await RespuestaEncuesta.find();
-    res.json(datos);
+    const datos = await Respuesta.find().populate('usuarioId', 'nombre correo');
+    const resultado = datos.map(d => ({
+      nombre: d.usuarioId?.nombre || 'Sin nombre',
+      correo: d.usuarioId?.correo || 'Desconocido',
+      seguridad: d.seguridad,
+      alumbrado: d.alumbrado,
+      parques: d.parques,
+      basura: d.basura,
+      fecha: d.fecha
+    }));
+
+    res.json(resultado);
   } catch (err) {
-    console.error("❌ Error al obtener resultados:", err);
-    res.status(500).json({ error: "Error en el servidor" });
+    res.status(500).json({ mensaje: 'Error al obtener resultados', error: err.message });
   }
 });
 

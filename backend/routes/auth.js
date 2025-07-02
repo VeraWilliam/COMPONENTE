@@ -1,37 +1,38 @@
-const express = require("express");
+const express = require('express');
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 const router = express.Router();
-const User = require("../models/User");
 
-router.post("/register", async (req, res) => {
-  const { nombre, correo, cedula, password, token } = req.body;
 
-  if (!nombre || !correo || !cedula || !password) {
-    return res.status(400).json({ error: "Todos los campos son obligatorios" });
+router.post('/login', async (req, res) => {
+  const { correo, contraseña } = req.body;
+
+  if (!correo || !contraseña) {
+    return res.status(400).json({ mensaje: 'Campos incompletos' });
   }
 
   try {
-    const nuevoUsuario = new User({ nombre, correo, cedula, password, token });
-    await nuevoUsuario.save();
-    console.log("✅ Usuario guardado:", nuevoUsuario);
-    res.status(201).json({ message: "Usuario registrado correctamente" });
+    const user = await User.findOne({ correo });
+
+    if (!user) {
+      return res.status(404).json({ mensaje: 'Usuario no encontrado' });
+    }
+
+    // Comparación directa (sin hash)
+    if (user.contraseña !== contraseña) {
+      return res.status(401).json({ mensaje: 'Contraseña incorrecta' });
+    }
+
+    // Generar token
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: '1d'
+    });
+
+    res.json({ token });
   } catch (err) {
-    console.error("❌ Error al registrar usuario:", err);
-    res.status(500).json({ error: "Error en el servidor" });
+    console.error('Error al iniciar sesión:', err);
+    res.status(500).json({ mensaje: 'Error del servidor' });
   }
-});
-
-// POST /api/auth/login
-
-router.post("/login", async (req, res) => {
-  const { correo, password } = req.body;
-
-  const user = await User.findOne({ correo, password });
-
-  if (!user) {
-    return res.status(401).json({ error: "Credenciales incorrectas" });
-  }
-
-  res.json({ nombre: user.nombre, correo: user.correo });
 });
 
 module.exports = router;

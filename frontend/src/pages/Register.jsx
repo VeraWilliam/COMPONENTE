@@ -2,37 +2,50 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-function Register() {
-  const [form, setForm] = useState({ nombre: '', correo: '', cedula: '', password: '' });
+export default function Register() {
+  const [form, setForm] = useState({
+    nombre: '',
+    correo: '',
+    canton: '',
+    celular: '',
+    contraseña: ''
+  });
+
   const navigate = useNavigate();
 
-  const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
 
-  const handleSubmit = async e => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
     try {
-      await axios.post("http://localhost:5000/api/auth/register", form);
-      alert("Registrado correctamente");
-      navigate("/");
-    } catch {
-      alert("Error al registrar");
+      console.log('Enviando datos:', form); // Verifica en consola del navegador
+
+      await axios.post('http://localhost:5000/api/auth/register', form);
+
+      alert('Usuario registrado correctamente');
+      navigate('/');
+    } catch (err) {
+      console.error('Error al registrar:', err.response?.data || err.message);
+      alert(err.response?.data?.mensaje || 'Error al registrar');
     }
   };
 
   return (
-    <section className="section">
-      <div className="container" style={{ maxWidth: 500 }}>
-        <h1 className="title">Registro</h1>
+    <div className="section">
+      <div className="container" style={{ maxWidth: '500px' }}>
+        <h1 className="title">Registro de Usuario</h1>
         <form onSubmit={handleSubmit}>
-          <input className="input mb-2" name="nombre" placeholder="Nombre" value={form.nombre} onChange={handleChange} required />
-          <input className="input mb-2" name="correo" placeholder="Correo" value={form.correo} onChange={handleChange} required />
-          <input className="input mb-2" name="cedula" placeholder="Cédula" value={form.cedula} onChange={handleChange} required />
-          <input className="input mb-2" type="password" name="password" placeholder="Contraseña" value={form.password} onChange={handleChange} required />
-          <button className="button is-primary">Registrar</button>
+          <input className="input" name="nombre" placeholder="Nombre" onChange={handleChange} required />
+          <input className="input mt-2" name="correo" type="email" placeholder="Correo" onChange={handleChange} required />
+          <input className="input mt-2" name="canton" placeholder="Cantón" onChange={handleChange} required />
+          <input className="input mt-2" name="celular" placeholder="Celular" onChange={handleChange} required />
+          <input className="input mt-2" name="contraseña" type="password" placeholder="Contraseña" onChange={handleChange} required />
+          <button className="button is-primary mt-3" type="submit">Registrar</button>
         </form>
       </div>
-    </section>
+    </div>
   );
 }
-
-export default Register;

@@ -2,59 +2,59 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 
-function RegistroGoogle() {
-  const navigate = useNavigate();
+export default function RegistroGoogle() {
   const location = useLocation();
-  const params = new URLSearchParams(location.search);
+  const navigate = useNavigate();
+
+  const query = new URLSearchParams(location.search);
+  const nombreGoogle = query.get('nombre');
+  const correoGoogle = query.get('correo');
 
   const [form, setForm] = useState({
     nombre: '',
     correo: '',
-    cedula: '',
-    password: '',
-    token: ''
+    canton: '',
+    celular: '',
+    contraseña: ''
   });
 
   useEffect(() => {
-    setForm({
-      nombre: params.get('nombre') || '',
-      correo: params.get('correo') || '',
-      cedula: '',
-      password: '',
-      token: params.get('token') || ''
-    });
-  }, [location.search]);
+    setForm(prev => ({
+      ...prev,
+      nombre: nombreGoogle || '',
+      correo: correoGoogle || ''
+    }));
+  }, [nombreGoogle, correoGoogle]);
 
   const handleChange = e => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async e => {
     e.preventDefault();
     try {
-      await axios.post("http://localhost:5000/api/auth/register", form);
-      alert("Registro exitoso. Ahora puede iniciar sesión.");
+      await axios.post('http://localhost:5000/api/users', form);
+      alert('Registro completado con éxito');
       navigate('/');
     } catch (err) {
-      console.error("❌ Error al registrar:", err);
-      alert("Error al registrar: " + (err.response?.data?.error || "Error desconocido"));
+      console.error('❌ Error al registrar desde Google:', err);
+      alert(err.response?.data?.mensaje || 'Error al registrar');
     }
   };
 
   return (
-    <section className="section">
-      <div className="container" style={{ maxWidth: "500px" }}>
-        <h1 className="title">Completa tu Registro</h1>
-        <form onSubmit={handleSubmit} className="box">
-          <input className="input mb-2" name="nombre" value={form.nombre} onChange={handleChange} required placeholder="Nombre completo" />
-          <input className="input mb-2" name="correo" value={form.correo} readOnly />
-          <input className="input mb-2" name="cedula" value={form.cedula} onChange={handleChange} required placeholder="Cédula" />
-          <input className="input mb-2" type="password" name="password" value={form.password} onChange={handleChange} required placeholder="Contraseña" />
-          <button className="button is-primary mt-3" type="submit">Registrar</button>
+    <div className="section">
+      <div className="container" style={{ maxWidth: '500px' }}>
+        <h1 className="title">Completar Registro con Google</h1>
+        <form onSubmit={handleSubmit}>
+          <input className="input" name="nombre" value={form.nombre} readOnly />
+          <input className="input mt-2" name="correo" value={form.correo} readOnly />
+          <input className="input mt-2" name="canton" placeholder="Cantón" onChange={handleChange} required />
+          <input className="input mt-2" name="celular" placeholder="Celular" onChange={handleChange} required />
+          <input className="input mt-2" name="contraseña" type="password" placeholder="Contraseña" onChange={handleChange} required />
+          <button className="button is-primary mt-3" type="submit">Guardar Registro</button>
         </form>
       </div>
-    </section>
+    </div>
   );
 }
-
-export default RegistroGoogle;

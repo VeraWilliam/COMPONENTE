@@ -11,7 +11,6 @@ export default function Resultados() {
       .then(res => setResultados(res.data))
       .catch(err => {
         console.error('Error al obtener resultados:', err);
-        alert('No se pudieron cargar los resultados.');
       });
   }, []);
 
@@ -83,7 +82,6 @@ export default function Resultados() {
               </tr>
             ))}
 
-            {/* Fila de promedios sin fondo especial */}
             {totalRespuestas > 0 && (
               <tr>
                 <td><strong>Promedio</strong></td>

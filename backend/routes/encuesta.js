@@ -1,61 +1,81 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const Respuesta = require('../models/RespuestaEncuesta');
-
+const User = require('../models/User');
 const router = express.Router();
 
-const auth = (req, res, next) => {
+
+router.post('/responder', async (req, res) => {
   const token = req.headers.authorization?.split(' ')[1];
-  if (!token) return res.sendStatus(401);
+  if (!token) return res.status(401).json({ mensaje: 'Token no proporcionado' });
 
-  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-    if (err) return res.sendStatus(403);
-    req.userId = decoded.id;
-    next();
-  });
-};
-
-// POST: guardar respuestas
-router.post('/responder', auth, async (req, res) => {
   try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const usuario = await User.findById(decoded.userId);
+    if (!usuario) return res.status(404).json({ mensaje: 'Usuario no encontrado' });
+
+    // Verifica si ya respondió antes
+    const encuestaExistente = await Respuesta.findOne({ correo: usuario.correo });
+
+    if (encuestaExistente) {
+      
+      await Respuesta.updateOne(
+        { correo: usuario.correo },
+        {
+          ...req.body,
+          nombre: usuario.nombre,
+          correo: usuario.correo,
+          fecha: new Date()
+        }
+      );
+      return res.status(200).json({ mensaje: 'Encuesta actualizada correctamente' });
+    }
+
+    
     const nueva = new Respuesta({
-      usuarioId: req.userId,
-      ...req.body
+      ...req.body,
+      nombre: usuario.nombre,
+      correo: usuario.correo,
+      fecha: new Date()
     });
 
     await nueva.save();
-    res.json({ mensaje: 'Encuesta enviada con éxito' });
+    res.status(201).json({ mensaje: 'Encuesta guardada correctamente' });
+
   } catch (err) {
-    console.error('❌ Error al guardar encuesta:', err);
-    res.status(500).json({ mensaje: 'Error al guardar encuesta', error: err.message });
+    console.error(' Error al guardar/actualizar encuesta:', err);
+    res.status(500).json({ mensaje: 'Error al guardar encuesta' });
   }
 });
 
-// GET: ver respuestas
+
 router.get('/resultados', async (req, res) => {
   try {
-    const datos = await Respuesta.find().populate('usuarioId', 'nombre correo');
-    const resultado = datos.map(d => ({
-      nombre: d.usuarioId?.nombre || 'Sin nombre',
-      correo: d.usuarioId?.correo || 'Sin correo',
-      pregunta1: d.pregunta1,
-      pregunta2: d.pregunta2,
-      pregunta3: d.pregunta3,
-      pregunta4: d.pregunta4,
-      pregunta5: d.pregunta5,
-      pregunta6: d.pregunta6,
-      pregunta7: d.pregunta7,
-      pregunta8: d.pregunta8,
-      pregunta9: d.pregunta9,
-      pregunta10: d.pregunta10,
-      pregunta11: d.pregunta11,
-      pregunta12: d.pregunta12,
-      fecha: d.fecha
-    }));
-
-    res.json(resultado);
+    const respuestas = await Respuesta.find().sort({ fecha: -1 });
+    res.json(respuestas);
   } catch (err) {
-    res.status(500).json({ mensaje: 'Error al obtener resultados', error: err.message });
+    console.error('❌ Error al obtener resultados:', err);
+    res.status(500).json({ mensaje: 'Error al obtener resultados' });
+  }
+});
+
+
+
+
+router.get('/mia', async (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.status(401).json({ mensaje: 'Token no proporcionado' });
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const usuario = await User.findById(decoded.userId);
+    if (!usuario) return res.status(404).json({ mensaje: 'Usuario no encontrado' });
+
+    const respuesta = await Respuesta.findOne({ correo: usuario.correo });
+    res.json(respuesta || {});
+  } catch (err) {
+    console.error(' Error al obtener encuesta del usuario:', err);
+    res.status(500).json({ mensaje: 'Error al obtener respuestas' });
   }
 });
 
